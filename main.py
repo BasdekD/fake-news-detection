@@ -1,18 +1,18 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import naive_bayes, metrics, model_selection
 from sklearn.pipeline import make_pipeline
-
 import utilities
 
 
 '''
 Project: Fake-news Detection
 Phase 1: Dataset Loading
-Phase 2: TF-IDF calculation
-Phase 3: Make the 2 Vector (TF-IDF title & TF-IDF body) algorithm's input features
-Phase 4: Use a classification algorithm
-Phase 5: Evaluate performance
-Phase 6: Extract new features, repeat from phase 4
+Phase 2: Data preprocessing (Lemmatization, stopword removal)
+Phase 3: TF-IDF calculation
+Phase 4: Make the 2 Vector (TF-IDF title & TF-IDF body) algorithm's input features
+Phase 5: Use a classification algorithm
+Phase 6: Evaluate performance
+Phase 7: Extract new features, repeat from phase 4
 '''
 
 # ==================== Phase 1 ======================
@@ -21,28 +21,42 @@ X, y = utilities.getData('\\resources\\Fake News Dataset.xlsx')
 
 
 # ==================== Phase 2 ======================
-# TODO: Is this step necessary?
-# vectorizer = TfidfVectorizer(encoding='unicode', strip_accents='unicode', max_df=0.8)
-#
-# title_vectorized = vectorizer.fit_transform(article_title)
-# body_vectorized = vectorizer.fit_transform(article_body)
 
+# Lemmatizing data
+lemmatized_doc = utilities.getLemmatizedText(X)
+
+# Removing stopwords TODO: Needs optimization (some stop words not included in the vocabulary. Could be added)
+stopword_removed_text = utilities.removeStopwords(lemmatized_doc)
+
+# Deleting unnecessary columns. Keeping only the preprocessed data
+list_columns = ["Title_stop", "Body_stop"]
+X = stopword_removed_text[list_columns]
+X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
 
 # ==================== Phase 3 ======================
-# TODO:  Make the 2 Vector (TF-IDF title & TF-IDF body) algorithm's input features (is this step necessary?)
+
+# Initializing vectorizer
+vectorizer = TfidfVectorizer(encoding='unicode', strip_accents='unicode', max_df=0.8, ngram_range=(1, 2))
 
 
 # ==================== Phase 4 ======================
-# TODO:  Use a classification algorithm
-x_train, x_test, y_train, y_test = model_selection.train_test_split(X, y, random_state=0, stratify=y)
+# TODO:  Concat Title and Body (Maybe it will lead to better results). Currently we are considering only the Body
+
+
+# ==================== Phase 5 ======================
+# TODO:  NB doesn't seem to handle class imbalance well. We should try something else
+
+# Splitting the data
+x_train, x_test, y_train, y_test = model_selection.train_test_split(X['Body_Parsed'], y, random_state=42, stratify=y)
 alpha = 0.1
-model = make_pipeline(TfidfVectorizer(), naive_bayes.MultinomialNB(alpha=alpha))
+model = make_pipeline(vectorizer, naive_bayes.MultinomialNB(alpha=alpha))
 model.fit(x_train, y_train)
 y_predicted = model.predict(x_test)
 
 
-# ==================== Phase 5 ======================
-# TODO:  Evaluate performance
+# ==================== Phase 6 ======================
+
+
 accuracy = metrics.accuracy_score(y_test, y_predicted)
 recall = metrics.recall_score(y_test, y_predicted, average='macro')
 precision = metrics.precision_score(y_test, y_predicted, average='macro')
@@ -54,7 +68,7 @@ print("Precision: %f" % precision)
 print("F1: %f" % f1)
 
 
-# ==================== Phase 6 ======================
+# ==================== Phase 7 ======================
 # TODO:  What other features could we use?
-
-#"Comment"
+# Number of Entities mentioned?
+# Numbers of each POS appearances?
