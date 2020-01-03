@@ -49,14 +49,28 @@ def getLemmatizedText(df):
     return df
 
 
+def removePunctuation(dataframe):
+    df = dataframe
+    df['Title_punct'] = df['Title_lem'].str.replace('[^\w\s]', '')
+    df['Body_punct'] = df['Body_lem'].str.replace('[^\w\s]', '')
+    return df
+
+def lowercase(dataframe):
+    df = dataframe
+    df['Title_lower'] = df['Title_punct'].str.lower()
+    df['Body_lower'] = df['Body_punct'].str.lower()
+    return df
+
 def removeStopwords(lemmatized_text):
     """
     A function to remove the stopwords of the text in a dataframe
     """
-    stop_words = list(stopwords.words('greek'))
+    nlp = sp.load("el_core_news_sm")
+    stop_words = list(nlp.Defaults.stop_words)
+    #stop_words1 = list(stopwords.words('greek'))
     df = lemmatized_text
-    df['Title_stop'] = df['Title_lem']
-    df['Body_stop'] = df['Body_lem']
+    df['Title_stop'] = df['Title_lower']
+    df['Body_stop'] = df['Body_lower']
 
     for stop_word in stop_words:
         regex_stopword = r"\b" + stop_word + r"\b"

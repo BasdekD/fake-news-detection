@@ -2,7 +2,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import naive_bayes, metrics, model_selection
 from sklearn.pipeline import make_pipeline
 import utilities
-
+from time import perf_counter
+t1_start = perf_counter()
 
 '''
 Project: Fake-news Detection
@@ -25,14 +26,20 @@ X, y = utilities.getData('\\resources\\Fake News Dataset.xlsx')
 # Lemmatizing data
 lemmatized_doc = utilities.getLemmatizedText(X)
 
+# Removing punctuation
+punct_removed_text = utilities.removePunctuation(lemmatized_doc)
+
+# Lowercase text
+lowercase_text = utilities.lowercase(punct_removed_text)
+
 # Removing stopwords TODO: Needs optimization (some stop words not included in the vocabulary. Could be added)
-stopword_removed_text = utilities.removeStopwords(lemmatized_doc)
+stopword_removed_text = utilities.removeStopwords(lowercase_text)
 
 # Deleting unnecessary columns. Keeping only the preprocessed data
 list_columns = ["Title_stop", "Body_stop"]
 X = stopword_removed_text[list_columns]
 X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
-
+X.to_excel("C:/Users/doxak/PycharmProjects/data.xls")
 # ==================== Phase 3 ======================
 
 # Initializing vectorizer
@@ -72,3 +79,6 @@ print("F1: %f" % f1)
 # TODO:  What other features could we use?
 # Number of Entities mentioned?
 # Numbers of each POS appearances?
+
+t1_stop = perf_counter()
+print("Elapsed time:", t1_stop-t1_start)
