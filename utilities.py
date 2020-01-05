@@ -4,6 +4,9 @@ import spacy as sp
 import re
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn import metrics
+
+nlp = sp.load("el_core_news_sm")
 
 
 def getData(fileName):
@@ -16,7 +19,8 @@ def getData(fileName):
     y = data.iloc[:, -1]
     return X, y
 
-def collectFeatures(df):
+
+def getLinguisticFeatures(df):
     """
        A function for collecting linguistic features
     """
@@ -63,6 +67,116 @@ def collectFeatures(df):
     return df
 
 
+def getNERFeature(df):
+    """
+    A function that:
+    1. Counts the number of occurrences  of each of the entity categories: GPE, LOC, ORG, PERSON, PRODUCT
+    for the title and the body of each article in the dataset
+    2. Normalizes the values occurred by dividing with the total number of entities found in the article's title or body
+    3. Concatenates the title and body results into a dataframe. Each row of a dataframe represents an article of the
+    dataset and the columns are title's entity count followed by body's entity count for each entity category
+    4. Returns the dataframe
+    """
+    num_of_docs = len(df)
+    NER_all_titles = []
+    NER_all_bodies = []
+
+    for doc_num in range(0, num_of_docs):
+        doc_title = nlp(df['Title'][doc_num])
+        doc_body = nlp(df['Body'][doc_num])
+
+        # The entity categories we will take into account
+        NER_title = {'GPE': 0, 'LOC': 0, 'ORG': 0, 'PERSON': 0, 'PRODUCT': 0}
+        NER_body = {'GPE': 0, 'LOC': 0, 'ORG': 0, 'PERSON': 0, 'PRODUCT': 0}
+        entity_counter_title = 0
+        entity_counter_body = 0
+
+        # Counting the entities in the title by their category
+        for ent in doc_title.ents:
+            for key in NER_title.keys():
+                if ent.label_ == key:
+                    entity_counter_title += 1
+                    NER_title[key] += 1
+        for key in NER_title.keys():
+            if entity_counter_title == 0:
+                NER_title[key] = 0
+            else:
+                NER_title[key] /= entity_counter_title
+        NER_all_titles.append(list(NER_title.values()))
+
+        # Counting the entities in the body by their category
+        for ent in doc_body.ents:
+            for key in NER_body.keys():
+                if ent.label_ == key:
+                    entity_counter_body += 1
+                    NER_body[key] += 1
+        for key in NER_body.keys():
+            if entity_counter_body == 0:
+                NER_body[key] = 0
+            else:
+                NER_body[key] /= entity_counter_body
+        NER_all_bodies.append(list(NER_body.values()))
+
+    NER_all_titles = pd.DataFrame(NER_all_titles)
+    NER_all_bodies = pd.DataFrame(NER_all_bodies)
+    dataframes = [NER_all_titles, NER_all_bodies]
+    df = pd.concat(dataframes, axis=1)
+    return df
+
+
+def getPOSFeature(df):
+    """
+    A function that:
+    1. Counts the number of occurrences  of each of the POS categories: ADJ, ADP, ADV, NOUN, PROPN, VERB
+    for the title and the body of each article in the dataset
+    2. Normalizes the values occurred by dividing with the total number of words in the article's title or body
+    3. Concatenates the title and body results into a dataframe. Each row of a dataframe represents an article of the
+    dataset and the columns are title's POS count followed by body's POS count for each POS category
+    4. Returns the dataframe
+    """
+    num_of_docs = len(df)
+    POS_all_titles = []
+    POS_all_bodies = []
+
+    for doc_num in range(0, num_of_docs):
+        doc_title = nlp(df['Title'][doc_num])
+        doc_body = nlp(df['Body'][doc_num])
+
+        # The POS categories we will take into account
+        POS_title = {'ADJ': 0, 'ADP': 0, 'ADV': 0, 'NOUN': 0, 'PROPN': 0, 'VERB': 0}
+        POS_body = {'ADJ': 0, 'ADP': 0, 'ADV': 0, 'NOUN': 0, 'PROPN': 0, 'VERB': 0}
+        token_counter_title = 0
+        token_counter_body = 0
+
+        # Counting the POS in the title by their category
+        for token in doc_title:
+            for key in POS_title.keys():
+                if token.pos_ == key:
+                    token_counter_title += 1
+                    POS_title[key] += 1
+        for key in POS_title.keys():
+            POS_title[key] /= token_counter_title
+        POS_all_titles.append(list(POS_title.values()))
+
+        # Counting the POS in the body by their category
+        for token in doc_body:
+            for key in POS_body.keys():
+                if token.pos_ == key:
+                    token_counter_body += 1
+                    POS_body[key] += 1
+        for key in POS_body.keys():
+            POS_body[key] /= token_counter_body
+        POS_all_bodies.append(list(POS_body.values()))
+
+    POS_all_titles = pd.DataFrame(POS_all_titles)
+    POS_all_bodies = pd.DataFrame(POS_all_bodies)
+    dataframes = [POS_all_titles, POS_all_bodies]
+    df = pd.concat(dataframes, axis=1)
+    return df
+
+
+
+
 def getLemmatizedText(df):
     """
     A function to Lemmatize the text of a given dataframe
@@ -70,7 +184,6 @@ def getLemmatizedText(df):
     num_of_docs = len(df)
     lemmatized_title = []
     lemmatized_body = []
-    nlp = sp.load("el_core_news_sm")
 
     for doc_num in range(0, num_of_docs):
         doc_title = nlp(df['Title'][doc_num])
@@ -106,14 +219,6 @@ def removePunctuation(dataframe):
     df['Body_punct'] = df['Body_lem'].str.replace('[^\w\s]', '')
     return df
 
-def lowercase(dataframe):
-    """
-       A function for converting text to lowercase
-    """
-    df = dataframe
-    df['Title_lower'] = df['Title_punct'].str.lower()
-    df['Body_lower'] = df['Body_punct'].str.lower()
-    return df
 
 def removeStopwords(lemmatized_text):
     """
@@ -122,8 +227,8 @@ def removeStopwords(lemmatized_text):
     nlp = sp.load("el_core_news_sm")
     stop_words = list(nlp.Defaults.stop_words)
     df = lemmatized_text
-    df['Title_stop'] = df['Title_lower']
-    df['Body_stop'] = df['Body_lower']
+    df['Title_stop'] = df['Title_punct']
+    df['Body_stop'] = df['Body_punct']
 
     for stop_word in stop_words:
         regex_stopword = r"\b" + stop_word + r"\b"
@@ -151,3 +256,13 @@ def plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1):
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     return fig
+
+
+def getMetrics(y_test, y_predicted, avg="macro"):
+    accuracy = metrics.accuracy_score(y_test, y_predicted)
+    recall = metrics.recall_score(y_test, y_predicted, average=avg)
+    precision = metrics.precision_score(y_test, y_predicted, average=avg)
+    f1 = metrics.f1_score(y_test, y_predicted, average=avg)
+
+    return accuracy, recall, precision, f1
+
