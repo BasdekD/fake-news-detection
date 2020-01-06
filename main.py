@@ -4,15 +4,18 @@ import utilities
 import numpy as np
 from time import perf_counter
 from imblearn.over_sampling import SMOTE
+import pandas as pd
+from sklearn.utils import resample
+
 
 
 t1_start = perf_counter()
 
 '''
 Project: Fake-news Detection
-Phase 1: Dataset Loading
-Phase 2: Data preprocessing (Lemmatization, stopword removal)
-Phase 3: TF-IDF calculation
+Phase 1: Loading Dataset
+Phase 2: Feature Extraction (Lemmatization, punctuation removal, stopword removal)
+Phase 3: Data Prep
 Phase 4: Make the 2 Vector (TF-IDF title & TF-IDF body) algorithm's input features
 Phase 5: Use a classification algorithm
 Phase 6: Evaluate performance
@@ -73,6 +76,9 @@ vector_tfidf = np.concatenate((vector_title, vector_body), axis=1)
 punct_features = X.as_matrix(columns=['Sum'])
 full_features = np.concatenate((vector_tfidf, punct_features, POS_feature), axis=1)
 
+# Converting features to a dataframe for easier processing during oversampling
+full_features = pd.DataFrame(data=full_features)
+
 # ============================================================================ #
 # ========================== Splitting Data ======================== #
 
@@ -86,13 +92,31 @@ x_train, x_test, y_train, y_test = model_selection.train_test_split(full_feature
 
 # ========================== Method 1: Synthetic Data ========================= #
 
-sm = SMOTE(random_state=42)
-x_train, y_train = sm.fit_sample(x_train, y_train)
+# sm = SMOTE(random_state=42)
+# x_train, y_train = sm.fit_sample(x_train, y_train)
 
 
 # ========================== Method 2: Oversampling ========================== #
 
-# TODO
+# concatenate our training data back together
+X = pd.concat([x_train, y_train], axis=1)
+
+# Seperating minority and majority class
+legit = X[X.Label == 'legit']
+fake = X[X.Label == 'fake']
+
+# Oversample minority class
+fake_oversampled = resample(fake,
+                            replace=True,           # sample with replacement
+                            n_samples=len(legit),   # match number of majority class
+                            random_state=42)        # reproducible results
+
+# Combining majority and oversampled minority
+oversampled = pd.concat([legit, fake_oversampled])
+
+# Dividing the train set once more
+y_train = oversampled.Label
+x_train = oversampled.drop('Label', axis=1)
 
 
 # ========================== Method 3: Undersampling ========================= #

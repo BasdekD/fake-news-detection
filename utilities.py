@@ -156,9 +156,9 @@ def getPOSFeature(df, pos_tags):
 
         # Counting the POS in the title by their category
         for token in doc_title:
+            token_counter_title += 1
             for key in POS_title.keys():
                 if token.pos_ == key:
-                    token_counter_title += 1
                     POS_title[key] += 1
         for key in POS_title.keys():
             if token_counter_title == 0:
@@ -169,9 +169,9 @@ def getPOSFeature(df, pos_tags):
 
         # Counting the POS in the body by their category
         for token in doc_body:
+            token_counter_body += 1
             for key in POS_body.keys():
                 if token.pos_ == key:
-                    token_counter_body += 1
                     POS_body[key] += 1
         for key in POS_body.keys():
             if token_counter_body == 0:
