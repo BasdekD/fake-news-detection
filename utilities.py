@@ -67,7 +67,7 @@ def getLinguisticFeatures(df):
     return df
 
 
-def getNERFeature(df):
+def getNERFeature(df, entity_types):
     """
     A function that:
     1. Counts the number of occurrences  of each of the entity categories: GPE, LOC, ORG, PERSON, PRODUCT
@@ -80,14 +80,17 @@ def getNERFeature(df):
     num_of_docs = len(df)
     NER_all_titles = []
     NER_all_bodies = []
+    NER_title = {}
+    NER_body = {}
 
     for doc_num in range(0, num_of_docs):
         doc_title = nlp(df['Title'][doc_num])
         doc_body = nlp(df['Body'][doc_num])
 
         # The entity categories we will take into account
-        NER_title = {'GPE': 0, 'LOC': 0, 'ORG': 0, 'PERSON': 0, 'PRODUCT': 0}
-        NER_body = {'GPE': 0, 'LOC': 0, 'ORG': 0, 'PERSON': 0, 'PRODUCT': 0}
+        for entity_type in entity_types:
+            NER_title[entity_type] = 0
+            NER_body[entity_type] = 0
         entity_counter_title = 0
         entity_counter_body = 0
 
@@ -124,7 +127,7 @@ def getNERFeature(df):
     return df
 
 
-def getPOSFeature(df):
+def getPOSFeature(df, pos_tags):
     """
     A function that:
     1. Counts the number of occurrences  of each of the POS categories: ADJ, ADP, ADV, NOUN, PROPN, VERB
@@ -137,14 +140,17 @@ def getPOSFeature(df):
     num_of_docs = len(df)
     POS_all_titles = []
     POS_all_bodies = []
+    POS_title = {}
+    POS_body = {}
 
     for doc_num in range(0, num_of_docs):
         doc_title = nlp(df['Title'][doc_num])
         doc_body = nlp(df['Body'][doc_num])
 
         # The POS categories we will take into account
-        POS_title = {'ADJ': 0, 'ADP': 0, 'ADV': 0, 'NOUN': 0, 'PROPN': 0, 'VERB': 0}
-        POS_body = {'ADJ': 0, 'ADP': 0, 'ADV': 0, 'NOUN': 0, 'PROPN': 0, 'VERB': 0}
+        for tag in pos_tags:
+            POS_title[tag] = 0
+            POS_body[tag] = 0
         token_counter_title = 0
         token_counter_body = 0
 
@@ -155,7 +161,10 @@ def getPOSFeature(df):
                     token_counter_title += 1
                     POS_title[key] += 1
         for key in POS_title.keys():
-            POS_title[key] /= token_counter_title
+            if token_counter_title == 0:
+                POS_title[key] = 0
+            else:
+                POS_title[key] /= token_counter_title
         POS_all_titles.append(list(POS_title.values()))
 
         # Counting the POS in the body by their category
@@ -165,7 +174,10 @@ def getPOSFeature(df):
                     token_counter_body += 1
                     POS_body[key] += 1
         for key in POS_body.keys():
-            POS_body[key] /= token_counter_body
+            if token_counter_body == 0:
+                POS_body[key] = 0
+            else:
+                POS_body[key] /= token_counter_body
         POS_all_bodies.append(list(POS_body.values()))
 
     POS_all_titles = pd.DataFrame(POS_all_titles)
