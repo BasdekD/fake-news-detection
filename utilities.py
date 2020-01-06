@@ -1,12 +1,11 @@
 import os
 import pandas as pd
-import spacy as sp
-import re
+import numpy as np
+from imblearn.over_sampling import SMOTE
+from sklearn.utils import resample
+from sklearn import metrics
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn import metrics
-
-nlp = sp.load("el_core_news_sm")
 
 
 def getData(fileName):
@@ -20,235 +19,76 @@ def getData(fileName):
     return X, y
 
 
-def getLinguisticFeatures(df):
+def getVectors(X, vectorizer):
     """
-       A function for collecting linguistic features
+    A function that takes a dataframe as an input and transform article title and article body documents into vectors,
+    concatenates the two columns into one and returns the two columns
+    """
+    vectorbody = vectorizer.fit_transform(X['Body_Parsed'])
+    vector_body = vectorbody.toarray()
+    vectortitle = vectorizer.fit_transform(X['Title_Parsed'])
+    vector_title = vectortitle.toarray()
+    vector_tfidf = np.concatenate((vector_title, vector_body), axis=1)
+    return vector_tfidf
+
+
+def getSyntheticData(x_train, y_train, random_state):
+    """
+    A function that deals with class imbalance by creating synthetic data of the minority class
+    """
+    sm = SMOTE(random_state=random_state)
+    x_train, y_train = sm.fit_sample(x_train, y_train)
+    return x_train, y_train
+
+
+def getOversampledData(x_train, y_train):
+    """
+    A function that deals with class imbalance by oversampling the minority class
     """
 
-    n = len(df)
-    # Collect the number of words
-    result1 = []
-    for i in range(0, n):
-        result1.append(len(re.findall(r'\S+', df['Title'][i])))
-    df['Number_of_words'] = result1
+    # concatenate our training data back together
+    X = pd.concat([x_train, y_train], axis=1)
 
-    # Collect the number uppercase words bigger or equal to 5 letters
-    uppercase = []
-    for i in range(0, n):
-        result = re.findall(r'[Α-Ω]{5,}', df['Title'][i])
-        uppercase.append(len(result)/result1[i])
-    df['Uppercase_words'] = uppercase
+    # Separating minority and majority class
+    legit = X[X.Label == 'legit']
+    fake = X[X.Label == 'fake']
 
-    # Collect the number of Ellispis(Αποσιωπητικά)
-    ellipsis =[]
-    for i in range(0, n):
-        result = re.findall(r'…', df['Title'][i])
-        ellipsis.append(len(result)/result1[i])
-    df['Ellipsis'] = ellipsis
+    # Oversample minority class
+    fake_oversampled = resample(fake,
+                                replace=True,  # sample with replacement
+                                n_samples=len(legit),  # match number of majority class
+                                random_state=42)  # reproducible results
 
-    # Collect the number of Guillemets(Εισαγωγικά)
-    guillements = []
-    for i in range(0, n):
-        result = re.findall(r'«.+?»', df['Title'][i])
-        guillements.append(len(result)/result1[i])
-    df['Guillements'] = guillements
+    # Combining majority and oversampled minority
+    oversampled = pd.concat([legit, fake_oversampled])
 
-    # Collect the number of Exclamation Marks
-    exclamation = []
-    for i in range(0, n):
-        result = re.findall(r'!', df['Title'][i])
-        exclamation.append(len(result)/result1[i])
-    df['Exclamation Marks'] = exclamation
+    # Dividing the train set once more
+    y_train = oversampled.Label
+    x_train = oversampled.drop('Label', axis=1)
 
-    sum = []
-    for i in range(0, n):
-        sum.append(df['Exclamation Marks'][i] + df['Ellipsis'][i])
-    df['Sum'] = sum
-    return df
+    return x_train, y_train
 
 
-def getNERFeature(df, entity_types):
+def getMetrics(y_test, y_predicted, avg="macro"):
     """
-    A function that:
-    1. Counts the number of occurrences  of each of the entity categories: GPE, LOC, ORG, PERSON, PRODUCT
-    for the title and the body of each article in the dataset
-    2. Normalizes the values occurred by dividing with the total number of entities found in the article's title or body
-    3. Concatenates the title and body results into a dataframe. Each row of a dataframe represents an article of the
-    dataset and the columns are title's entity count followed by body's entity count for each entity category
-    4. Returns the dataframe
+    A function that returns the accuracy, recall, precision and f1 metrics of an algorithm's implementation
     """
-    num_of_docs = len(df)
-    NER_all_titles = []
-    NER_all_bodies = []
-    NER_title = {}
-    NER_body = {}
+    accuracy = metrics.accuracy_score(y_test, y_predicted)
+    recall = metrics.recall_score(y_test, y_predicted, average=avg)
+    precision = metrics.precision_score(y_test, y_predicted, average=avg)
+    f1 = metrics.f1_score(y_test, y_predicted, average=avg)
 
-    for doc_num in range(0, num_of_docs):
-        doc_title = nlp(df['Title'][doc_num])
-        doc_body = nlp(df['Body'][doc_num])
-
-        # The entity categories we will take into account
-        for entity_type in entity_types:
-            NER_title[entity_type] = 0
-            NER_body[entity_type] = 0
-        entity_counter_title = 0
-        entity_counter_body = 0
-
-        # Counting the entities in the title by their category
-        for ent in doc_title.ents:
-            for key in NER_title.keys():
-                if ent.label_ == key:
-                    entity_counter_title += 1
-                    NER_title[key] += 1
-        for key in NER_title.keys():
-            if entity_counter_title == 0:
-                NER_title[key] = 0
-            else:
-                NER_title[key] /= entity_counter_title
-        NER_all_titles.append(list(NER_title.values()))
-
-        # Counting the entities in the body by their category
-        for ent in doc_body.ents:
-            for key in NER_body.keys():
-                if ent.label_ == key:
-                    entity_counter_body += 1
-                    NER_body[key] += 1
-        for key in NER_body.keys():
-            if entity_counter_body == 0:
-                NER_body[key] = 0
-            else:
-                NER_body[key] /= entity_counter_body
-        NER_all_bodies.append(list(NER_body.values()))
-
-    NER_all_titles = pd.DataFrame(NER_all_titles)
-    NER_all_bodies = pd.DataFrame(NER_all_bodies)
-    dataframes = [NER_all_titles, NER_all_bodies]
-    df = pd.concat(dataframes, axis=1)
-    return df
+    return accuracy, recall, precision, f1
 
 
-def getPOSFeature(df, pos_tags):
+def printMetrics(accuracy, recall, precision, f1):
     """
-    A function that:
-    1. Counts the number of occurrences  of each of the POS categories: ADJ, ADP, ADV, NOUN, PROPN, VERB
-    for the title and the body of each article in the dataset
-    2. Normalizes the values occurred by dividing with the total number of words in the article's title or body
-    3. Concatenates the title and body results into a dataframe. Each row of a dataframe represents an article of the
-    dataset and the columns are title's POS count followed by body's POS count for each POS category
-    4. Returns the dataframe
+    A function that prints given metrics in a nice format
     """
-    num_of_docs = len(df)
-    POS_all_titles = []
-    POS_all_bodies = []
-    POS_title = {}
-    POS_body = {}
-
-    for doc_num in range(0, num_of_docs):
-        doc_title = nlp(df['Title'][doc_num])
-        doc_body = nlp(df['Body'][doc_num])
-
-        # The POS categories we will take into account
-        for tag in pos_tags:
-            POS_title[tag] = 0
-            POS_body[tag] = 0
-        token_counter_title = 0
-        token_counter_body = 0
-
-        # Counting the POS in the title by their category
-        for token in doc_title:
-            token_counter_title += 1
-            for key in POS_title.keys():
-                if token.pos_ == key:
-                    POS_title[key] += 1
-        for key in POS_title.keys():
-            if token_counter_title == 0:
-                POS_title[key] = 0
-            else:
-                POS_title[key] /= token_counter_title
-        POS_all_titles.append(list(POS_title.values()))
-
-        # Counting the POS in the body by their category
-        for token in doc_body:
-            token_counter_body += 1
-            for key in POS_body.keys():
-                if token.pos_ == key:
-                    POS_body[key] += 1
-        for key in POS_body.keys():
-            if token_counter_body == 0:
-                POS_body[key] = 0
-            else:
-                POS_body[key] /= token_counter_body
-        POS_all_bodies.append(list(POS_body.values()))
-
-    POS_all_titles = pd.DataFrame(POS_all_titles)
-    POS_all_bodies = pd.DataFrame(POS_all_bodies)
-    dataframes = [POS_all_titles, POS_all_bodies]
-    df = pd.concat(dataframes, axis=1)
-    return df
-
-
-
-
-def getLemmatizedText(df):
-    """
-    A function to Lemmatize the text of a given dataframe
-    """
-    num_of_docs = len(df)
-    lemmatized_title = []
-    lemmatized_body = []
-
-    for doc_num in range(0, num_of_docs):
-        doc_title = nlp(df['Title'][doc_num])
-        doc_body = nlp(df['Body'][doc_num])
-
-        # Lemmatizing Document's Title
-        lemmatized_list_title = []
-        for token in doc_title:
-            lemmatized_list_title.append(token.lemma_)
-        lemmatized_text_title = " ".join(lemmatized_list_title)
-        lemmatized_title.append(lemmatized_text_title)
-
-        # Lemmatizing Document's Body
-        lemmatized_list_body = []
-        for token in doc_body:
-            lemmatized_list_body.append(token.lemma_)
-        lemmatized_text_body = " ".join(lemmatized_list_body)
-        lemmatized_body.append(lemmatized_text_body)
-
-    # Appending new lemmatized columns
-    df['Title_lem'] = lemmatized_title
-    df['Body_lem'] = lemmatized_body
-
-    return df
-
-
-def removePunctuation(dataframe):
-    """
-       A function for removing punctuation
-    """
-    df = dataframe
-    df['Title_punct'] = df['Title_lem'].str.replace('[^\w\s]', '')
-    df['Body_punct'] = df['Body_lem'].str.replace('[^\w\s]', '')
-    return df
-
-
-def removeStopwords(lemmatized_text):
-    """
-    A function to remove the stopwords of the text in a dataframe
-    """
-    nlp = sp.load("el_core_news_sm")
-    stop_words = list(nlp.Defaults.stop_words)
-    df = lemmatized_text
-    df['Title_stop'] = df['Title_punct']
-    df['Body_stop'] = df['Body_punct']
-
-    for stop_word in stop_words:
-        regex_stopword = r"\b" + stop_word + r"\b"
-        df['Title_stop'] = df['Title_stop'].str.\
-            replace(regex_stopword, '', case=False, regex=True)
-        df['Body_stop'] = df['Body_stop'].str.\
-            replace(regex_stopword, '', case=False, regex=True)
-    return df
+    print("Accuracy: %f" % accuracy)
+    print("Recall: %f" % recall)
+    print("Precision: %f" % precision)
+    print("F1: %f" % f1)
 
 
 def plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1):
@@ -270,11 +110,4 @@ def plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1):
     return fig
 
 
-def getMetrics(y_test, y_predicted, avg="macro"):
-    accuracy = metrics.accuracy_score(y_test, y_predicted)
-    recall = metrics.recall_score(y_test, y_predicted, average=avg)
-    precision = metrics.precision_score(y_test, y_predicted, average=avg)
-    f1 = metrics.f1_score(y_test, y_predicted, average=avg)
-
-    return accuracy, recall, precision, f1
 

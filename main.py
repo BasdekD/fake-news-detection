@@ -1,13 +1,11 @@
+import utilities
+import featureExtraction
+import preprocessing
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import naive_bayes, model_selection, neural_network, metrics
-import utilities
 import numpy as np
 from time import perf_counter
-from imblearn.over_sampling import SMOTE
 import pandas as pd
-from sklearn.utils import resample
-
-
 
 t1_start = perf_counter()
 
@@ -31,25 +29,25 @@ X, y = utilities.getData('\\resources\\Fake News Dataset.xlsx')
 # ============================================================================ #
 # ========================== Feature Extraction ============================== #
 
-# entities = ['GPE']  # 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'  # The NER did not improve the model. No useful feature
+# entities = ['GPE']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
 # NER_feature = utilities.getNERFeature(X, entities)
 
-pos_tags = ['ADP']  # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
-POS_feature = utilities.getPOSFeature(X, pos_tags)
-punct_feature = utilities.getLinguisticFeatures(X)
+pos_tags = ['ADP']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
+POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
+punctuation_feature = featureExtraction.getPunctuationFeatures(X)
 
 
 # ============================================================================ #
 # ========================== Data Preprocessing ============================== #
 
 # Lemmatizing data
-lemmatized_text = utilities.getLemmatizedText(punct_feature)
+lemmatized_text = preprocessing.getLemmatizedText(X)
 
 # Removing punctuation
-punct_removed_text = utilities.removePunctuation(lemmatized_text)
+punctuation_removed_text = preprocessing.removePunctuation(lemmatized_text)
 
 # Removing stopwords
-stopword_removed_text = utilities.removeStopwords(punct_removed_text)
+stopword_removed_text = preprocessing.removeStopwords(punctuation_removed_text)
 
 # Deleting unnecessary columns. Keeping only the preprocessed data
 list_columns = ["Title_stop", "Body_stop", "Sum"]
@@ -61,28 +59,23 @@ X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
 # ========================== TF-IDF Extraction =============================== #
 
 # Initializing vectorizer
-vectorizer = TfidfVectorizer(encoding='unicode', strip_accents='unicode', max_df=0.8, ngram_range=(1, 2))
+vectorizer = TfidfVectorizer(encoding='unicode', strip_accents='unicode')
 
-# Perform TF-IDF in title and body and merge them with the other features
-vectorbody = vectorizer.fit_transform(X['Body_Parsed'])
-vector_body = vectorbody.toarray()
-vectortitle = vectorizer.fit_transform(X['Title_Parsed'])
-vector_title = vectortitle.toarray()
-vector_tfidf = np.concatenate((vector_title, vector_body), axis=1)
+# Get TF-IDF of title and body and merge them
+vectors = utilities.getVectors(X, vectorizer)
 
 # ============================================================================ #
-# ========================== Gathering Features ============================== #
+# ========================== Collecting Features ============================= #
 
-punct_features = X.as_matrix(columns=['Sum'])
-full_features = np.concatenate((vector_tfidf, punct_features, POS_feature), axis=1)
+punctuation_features = X.as_matrix(columns=['Sum'])
+full_features = np.concatenate((vectors, punctuation_features, POS_feature), axis=1)
 
 # Converting features to a dataframe for easier processing during oversampling
 full_features = pd.DataFrame(data=full_features)
 
 # ============================================================================ #
-# ========================== Splitting Data ======================== #
+# ========================== Splitting Data ================================== #
 
-# Splitting the data
 x_train, x_test, y_train, y_test = model_selection.train_test_split(full_features, y, random_state=42, stratify=y)
 
 
@@ -90,33 +83,14 @@ x_train, x_test, y_train, y_test = model_selection.train_test_split(full_feature
 # ========================== Dealing With Imbalance ========================== #
 
 
-# ========================== Method 1: Synthetic Data ========================= #
+# ========================== Method 1: Synthetic Data ======================== #
 
-# sm = SMOTE(random_state=42)
-# x_train, y_train = sm.fit_sample(x_train, y_train)
+x_train, y_train = utilities.getSyntheticData(x_train, y_train, 42)
 
 
 # ========================== Method 2: Oversampling ========================== #
 
-# concatenate our training data back together
-X = pd.concat([x_train, y_train], axis=1)
-
-# Seperating minority and majority class
-legit = X[X.Label == 'legit']
-fake = X[X.Label == 'fake']
-
-# Oversample minority class
-fake_oversampled = resample(fake,
-                            replace=True,           # sample with replacement
-                            n_samples=len(legit),   # match number of majority class
-                            random_state=42)        # reproducible results
-
-# Combining majority and oversampled minority
-oversampled = pd.concat([legit, fake_oversampled])
-
-# Dividing the train set once more
-y_train = oversampled.Label
-x_train = oversampled.drop('Label', axis=1)
+x_train, y_train = utilities.getOversampledData(x_train, y_train)
 
 
 # ========================== Method 3: Undersampling ========================= #
@@ -149,11 +123,19 @@ y_predicted = model.predict(x_test)
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #
 
+# ========================== Macro Averaging ================================= #
+
 accuracy, recall, precision, f1 = utilities.getMetrics(y_test, y_predicted)
-print("Accuracy: %f" % accuracy)
-print("Recall: %f" % recall)
-print("Precision: %f" % precision)
-print("F1: %f" % f1)
+
+# ========================== Cross Validation ================================ #
+# TODO
+
+
+# ============================================================================ #
+# ========================== Results Visualization =========================== #
+
+# Print Metrics
+utilities.printMetrics(accuracy, recall, precision, f1)
 
 # Plot confusion matrix
 confusion_matrix = metrics.confusion_matrix(y_test, y_predicted)
@@ -163,6 +145,8 @@ utilities.plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1).
 # TODO:  What other features could we use?
 # Number of Entities mentioned?
 # Numbers of each POS appearances?
+# Average sentence length?
+# Average word length?
 
 # Calculate execution time
 t1_stop = perf_counter()
