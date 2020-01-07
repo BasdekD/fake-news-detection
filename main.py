@@ -2,7 +2,7 @@ import utilities
 import featureExtraction
 import preprocessing
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn import naive_bayes, model_selection, neural_network, metrics
+from sklearn import naive_bayes, model_selection, neural_network, metrics, tree
 import numpy as np
 from time import perf_counter
 import pandas as pd
@@ -29,12 +29,12 @@ X, y = utilities.getData('\\resources\\Fake News Dataset.xlsx')
 # ============================================================================ #
 # ========================== Feature Extraction ============================== #
 
-# entities = ['GPE']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
-# NER_feature = utilities.getNERFeature(X, entities)
+entities = ['GPE']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
+NER_feature = featureExtraction.getNERFeature(X, entities)
 
-pos_tags = ['ADP']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
-POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
-punctuation_feature = featureExtraction.getPunctuationFeatures(X)
+# pos_tags = ['ADP', 'PROPN']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
+# POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
+# punctuation_feature = featureExtraction.getPunctuationFeatures(X)
 
 
 # ============================================================================ #
@@ -50,7 +50,8 @@ punctuation_removed_text = preprocessing.removePunctuation(lemmatized_text)
 stopword_removed_text = preprocessing.removeStopwords(punctuation_removed_text)
 
 # Deleting unnecessary columns. Keeping only the preprocessed data
-list_columns = ["Title_stop", "Body_stop", "Sum"]
+# list_columns = ["Title_stop", "Body_stop", "Sum"]
+list_columns = ["Title_stop", "Body_stop"]
 X = stopword_removed_text[list_columns]
 X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
 
@@ -59,7 +60,7 @@ X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
 # ========================== TF-IDF Extraction =============================== #
 
 # Initializing vectorizer
-vectorizer = TfidfVectorizer(encoding='unicode', strip_accents='unicode')
+vectorizer = TfidfVectorizer(strip_accents='unicode', max_df=0.8, ngram_range=(1, 4))
 
 # Get TF-IDF of title and body and merge them
 vectors = utilities.getVectors(X, vectorizer)
@@ -67,8 +68,8 @@ vectors = utilities.getVectors(X, vectorizer)
 # ============================================================================ #
 # ========================== Collecting Features ============================= #
 
-punctuation_features = X.as_matrix(columns=['Sum'])
-full_features = np.concatenate((vectors, punctuation_features, POS_feature), axis=1)
+# punctuation_features = X.as_matrix(columns=['Sum'])
+full_features = np.concatenate((vectors, NER_feature), axis=1)
 
 # Converting features to a dataframe for easier processing during oversampling
 full_features = pd.DataFrame(data=full_features)
@@ -76,7 +77,9 @@ full_features = pd.DataFrame(data=full_features)
 # ============================================================================ #
 # ========================== Splitting Data ================================== #
 
-x_train, x_test, y_train, y_test = model_selection.train_test_split(full_features, y, random_state=42, stratify=y)
+random_state = 42
+x_train, x_test, y_train, y_test = \
+    model_selection.train_test_split(full_features, y, random_state=random_state, stratify=y)
 
 
 # ============================================================================ #
@@ -85,17 +88,12 @@ x_train, x_test, y_train, y_test = model_selection.train_test_split(full_feature
 
 # ========================== Method 1: Synthetic Data ======================== #
 
-x_train, y_train = utilities.getSyntheticData(x_train, y_train, 42)
+x_train, y_train = utilities.getSyntheticData(x_train, y_train, random_state)
 
 
 # ========================== Method 2: Oversampling ========================== #
 
-x_train, y_train = utilities.getOversampledData(x_train, y_train)
-
-
-# ========================== Method 3: Undersampling ========================= #
-
-# TODO
+# x_train, y_train = utilities.getOversampledData(x_train, y_train)
 
 
 # ============================================================================ #
@@ -103,8 +101,8 @@ x_train, y_train = utilities.getOversampledData(x_train, y_train)
 
 # ========================== Multinomial NB ================================== #
 
-alpha = 0.1
-model = naive_bayes.MultinomialNB(alpha=alpha)
+# alpha = 0.1
+# model = naive_bayes.MultinomialNB(alpha=alpha)
 
 # ========================== Neural Networks ================================== #
 
@@ -112,6 +110,10 @@ model = naive_bayes.MultinomialNB(alpha=alpha)
 #     hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha
 # )
 
+# ========================== Decision Tree ++================================== #
+
+max_depth = 8
+model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
 
 # ============================================================================ #
 # ========================== Fitting Model =================================== #
@@ -139,7 +141,7 @@ utilities.printMetrics(accuracy, recall, precision, f1)
 
 # Plot confusion matrix
 confusion_matrix = metrics.confusion_matrix(y_test, y_predicted)
-utilities.plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1).show()
+utilities.plotHeatmap(confusion_matrix, accuracy, recall, precision, f1).show()
 
 
 # TODO:  What other features could we use?

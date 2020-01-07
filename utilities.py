@@ -91,7 +91,7 @@ def printMetrics(accuracy, recall, precision, f1):
     print("F1: %f" % f1)
 
 
-def plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1):
+def plotHeatmap(confusion_matrix, accuracy, recall, precision, f1):
     """
     A function for plotting the confusion matrix
     """
@@ -103,8 +103,8 @@ def plotHeatmap(confusion_matrix, alpha, accuracy, recall, precision, f1):
     heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=45, ha='right', fontsize=14)
     bottom, top = heatmap.get_ylim()
     heatmap.set_ylim(bottom + 0.5, top - 0.5)
-    plt.title('Confusion Matrix \n[a={:.1f}] [Accuracy:{:.3f}, Recall:{:.3f}, Precision:{:.3f}, F1:{:.3f}]'
-              .format(alpha, accuracy, recall, precision, f1), fontsize=14)
+    plt.title('Confusion Matrix \n[Accuracy:{:.3f}, Recall:{:.3f}, Precision:{:.3f}, F1:{:.3f}]'
+              .format(accuracy, recall, precision, f1), fontsize=14)
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     return fig

@@ -82,9 +82,9 @@ def getNERFeature(df, entity_types):
 
         # Counting the entities in the title by their category
         for ent in doc_title.ents:
+            entity_counter_title += 1
             for key in NER_title.keys():
                 if ent.label_ == key:
-                    entity_counter_title += 1
                     NER_title[key] += 1
         for key in NER_title.keys():
             if entity_counter_title == 0:
@@ -95,9 +95,9 @@ def getNERFeature(df, entity_types):
 
         # Counting the entities in the body by their category
         for ent in doc_body.ents:
+            entity_counter_body += 1
             for key in NER_body.keys():
                 if ent.label_ == key:
-                    entity_counter_body += 1
                     NER_body[key] += 1
         for key in NER_body.keys():
             if entity_counter_body == 0:
