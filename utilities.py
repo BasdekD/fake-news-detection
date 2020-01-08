@@ -3,7 +3,8 @@ import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
 from sklearn.utils import resample
-from sklearn import metrics
+from sklearn import metrics, model_selection
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -111,3 +112,16 @@ def plotHeatmap(confusion_matrix, accuracy, recall, precision, f1):
 
 
 
+def crossvalidation(x, y, model):
+    """
+        A function find scores with cross-validation
+    """
+
+    cv = model_selection.ShuffleSplit(n_splits=10, test_size=0.1, random_state=0)
+    scoring = ['accuracy', 'recall_macro', 'precision_macro', 'f1_macro']
+    score = model_selection.cross_validate(estimator=model, X=x, y=y, cv=cv, scoring=scoring)
+    results = {'avg_acurracy': score['test_accuracy'].mean(),
+               'avg_recall_macro': score['test_recall_macro'].mean(),
+               'avg_precision_macro': score['test_precision_macro'].mean(),
+               'avg_f1_macro': score['test_f1_macro'].mean()}
+    return results

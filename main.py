@@ -101,8 +101,8 @@ x_train, y_train = utilities.getSyntheticData(x_train, y_train, random_state)
 
 # ========================== Multinomial NB ================================== #
 
-# alpha = 0.1
-# model = naive_bayes.MultinomialNB(alpha=alpha)
+alpha = 0.1
+model = naive_bayes.MultinomialNB(alpha=alpha)
 
 # ========================== Neural Networks ================================== #
 
@@ -112,15 +112,16 @@ x_train, y_train = utilities.getSyntheticData(x_train, y_train, random_state)
 
 # ========================== Decision Tree ++================================== #
 
-max_depth = 8
-model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
+#max_depth = 9
+#model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
 
 # ============================================================================ #
 # ========================== Fitting Model =================================== #
 
 model.fit(x_train, y_train)
 y_predicted = model.predict(x_test)
-
+#results = utilities.crossvalidation(full_features, y, model)
+#print(results)
 
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #
