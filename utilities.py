@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import make_pipeline
 from sklearn.utils import resample
 from sklearn import metrics, model_selection
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
@@ -23,7 +24,7 @@ def getData(fileName):
 def getVectors(X, vectorizer):
     """
     A function that takes a dataframe as an input and transform article title and article body documents into vectors,
-    concatenates the two columns into one and returns the two columns
+    concatenates the two columns into one and returns the results
     """
     vectorbody = vectorizer.fit_transform(X['Body_Parsed'])
     vector_body = vectorbody.toarray()
@@ -111,15 +112,14 @@ def plotHeatmap(confusion_matrix, accuracy, recall, precision, f1):
     return fig
 
 
-
-def crossvalidation(x, y, model):
+def crossValidation(X, y, model):
     """
-        A function find scores with cross-validation
+        A function that uses cross validation with data oversampling in each split.
     """
-
-    cv = model_selection.ShuffleSplit(n_splits=10, test_size=0.1, random_state=0)
+    imbalance_pipeline = make_pipeline(SMOTE(random_state=42), model)
+    cv = model_selection.StratifiedKFold(n_splits=10)
     scoring = ['accuracy', 'recall_macro', 'precision_macro', 'f1_macro']
-    score = model_selection.cross_validate(estimator=model, X=x, y=y, cv=cv, scoring=scoring)
+    score = model_selection.cross_validate(imbalance_pipeline, X=X, y=y, cv=cv, scoring=scoring)
     results = {'avg_acurracy': score['test_accuracy'].mean(),
                'avg_recall_macro': score['test_recall_macro'].mean(),
                'avg_precision_macro': score['test_precision_macro'].mean(),

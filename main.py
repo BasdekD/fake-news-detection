@@ -75,28 +75,6 @@ full_features = np.concatenate((vectors, NER_feature), axis=1)
 full_features = pd.DataFrame(data=full_features)
 
 # ============================================================================ #
-# ========================== Splitting Data ================================== #
-
-random_state = 42
-x_train, x_test, y_train, y_test = \
-    model_selection.train_test_split(full_features, y, random_state=random_state, stratify=y)
-
-
-# ============================================================================ #
-# ========================== Dealing With Imbalance ========================== #
-
-
-# ========================== Method 1: Synthetic Data ======================== #
-
-x_train, y_train = utilities.getSyntheticData(x_train, y_train, random_state)
-
-
-# ========================== Method 2: Oversampling ========================== #
-
-# x_train, y_train = utilities.getOversampledData(x_train, y_train)
-
-
-# ============================================================================ #
 # ========================== Training ML Model =============================== #
 
 # ========================== Multinomial NB ================================== #
@@ -110,39 +88,29 @@ model = naive_bayes.MultinomialNB(alpha=alpha)
 #     hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha
 # )
 
-# ========================== Decision Tree ++================================== #
+# ========================== Decision Tree ==================================== #
 
-#max_depth = 9
-#model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
-
-# ============================================================================ #
-# ========================== Fitting Model =================================== #
-
-model.fit(x_train, y_train)
-y_predicted = model.predict(x_test)
-#results = utilities.crossvalidation(full_features, y, model)
-#print(results)
+# max_depth = 8
+# model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
 
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #
 
-# ========================== Macro Averaging ================================= #
-
-accuracy, recall, precision, f1 = utilities.getMetrics(y_test, y_predicted)
-
 # ========================== Cross Validation ================================ #
-# TODO
+
+results = utilities.crossValidation(full_features, y, model)
+print(results)
 
 
 # ============================================================================ #
 # ========================== Results Visualization =========================== #
 
 # Print Metrics
-utilities.printMetrics(accuracy, recall, precision, f1)
+# utilities.printMetrics(accuracy, recall, precision, f1)
 
 # Plot confusion matrix
-confusion_matrix = metrics.confusion_matrix(y_test, y_predicted)
-utilities.plotHeatmap(confusion_matrix, accuracy, recall, precision, f1).show()
+# confusion_matrix = metrics.confusion_matrix(y_test, y_predicted)
+# utilities.plotHeatmap(confusion_matrix, accuracy, recall, precision, f1).show()
 
 
 # TODO:  What other features could we use?
