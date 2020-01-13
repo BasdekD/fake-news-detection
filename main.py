@@ -34,8 +34,9 @@ NER_feature = featureExtraction.getNERFeature(X, entities)
 
 # pos_tags = ['ADP', 'PROPN']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
 # POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
-# punctuation_feature = featureExtraction.getPunctuationFeatures(X)
+punctuation_features = featureExtraction.getPunctuationFeatures(X)
 
+#affin_feature = featureExtraction.psycholiguistic(X)
 
 # ============================================================================ #
 # ========================== Data Preprocessing ============================== #
@@ -43,14 +44,16 @@ NER_feature = featureExtraction.getNERFeature(X, entities)
 # Lemmatizing data
 lemmatized_text = preprocessing.getLemmatizedText(X)
 
+# To lowercase
+lowercase_text = preprocessing.lowercase(lemmatized_text)
+
 # Removing punctuation
-punctuation_removed_text = preprocessing.removePunctuation(lemmatized_text)
+punctuation_removed_text = preprocessing.removePunctuation(lowercase_text)
 
 # Removing stopwords
 stopword_removed_text = preprocessing.removeStopwords(punctuation_removed_text)
 
 # Deleting unnecessary columns. Keeping only the preprocessed data
-# list_columns = ["Title_stop", "Body_stop", "Sum"]
 list_columns = ["Title_stop", "Body_stop"]
 X = stopword_removed_text[list_columns]
 X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
@@ -68,7 +71,7 @@ vectors = utilities.getVectors(X, vectorizer)
 # ============================================================================ #
 # ========================== Collecting Features ============================= #
 
-# punctuation_features = X.as_matrix(columns=['Sum'])
+#punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
 full_features = np.concatenate((vectors, NER_feature), axis=1)
 
 # Converting features to a dataframe for easier processing during oversampling
@@ -90,8 +93,8 @@ model = naive_bayes.MultinomialNB(alpha=alpha)
 
 # ========================== Decision Tree ==================================== #
 
-# max_depth = 8
-# model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
+#max_depth = 8
+#model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
 
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #

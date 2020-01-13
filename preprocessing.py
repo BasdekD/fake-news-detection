@@ -35,14 +35,23 @@ def getLemmatizedText(df):
 
     return df
 
+def lowercase(dataframe):
+    """
+       A function for removing punctuation
+    """
+    df = dataframe
+    df['Title_lower'] = df['Title_lem'].str.lower()
+    df['Body_lower'] = df['Body_lem'].str.lower()
+    return df
+
 
 def removePunctuation(dataframe):
     """
        A function for removing punctuation
     """
     df = dataframe
-    df['Title_punct'] = df['Title_lem'].str.replace('[^\w\s]', '')
-    df['Body_punct'] = df['Body_lem'].str.replace('[^\w\s]', '')
+    df['Title_punct'] = df['Title_lower'].str.replace('[^\w\s]', '')
+    df['Body_punct'] = df['Body_lower'].str.replace('[^\w\s]', '')
     return df
 
 
