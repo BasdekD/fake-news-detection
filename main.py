@@ -4,6 +4,8 @@ import preprocessing
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import naive_bayes, model_selection, neural_network, metrics, tree, svm
 import numpy as np
+from sklearn.feature_selection import chi2, SelectKBest
+from sklearn import preprocessing
 from time import perf_counter
 import pandas as pd
 
@@ -29,14 +31,15 @@ X, y = utilities.getData('\\resources\\Fake News Dataset.xlsx')
 # ============================================================================ #
 # ========================== Feature Extraction ============================== #
 
-entities = ['GPE']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
+entities = ['GPE','LOC','ORG','PERSON','PRODUCT']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
 NER_feature = featureExtraction.getNERFeature(X, entities)
 
-pos_tags = ['ADP', 'PROPN']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
+pos_tags = ['ADJ','ADP','ADV','NOUN','PROPN','VERB']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
 POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
+
 punctuation_features = featureExtraction.getPunctuationFeatures(X)
 
-#affin_feature = featureExtraction.psycholiguistic(X)
+affin_features = featureExtraction.psycholiguistic(X)
 
 # ============================================================================ #
 # ========================== Data Preprocessing ============================== #
@@ -71,27 +74,36 @@ vectors = utilities.getVectors(X, vectorizer)
 # ============================================================================ #
 # ========================== Collecting Features ============================= #
 
-punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
-full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature), axis=1)
+#punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
+full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature, affin_features), axis=1)
 
 # Converting features to a dataframe for easier processing during oversampling
 full_features = pd.DataFrame(data=full_features)
 full_features.to_pickle("C:/Users/doxak/PycharmProjects/features.pkl")
 '''
 full_features = pd.read_pickle("C:/Users/doxak/PycharmProjects/features.pkl")
+
+# ============================================================================ #
+# ========================== Feature Selection =============================== #
+
+print(full_features.shape)
+minMaxScaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+full_features = minMaxScaler.fit_transform(full_features)
+selected_features = SelectKBest(chi2, k=6000).fit_transform(full_features, y)
+print(selected_features.shape)
+
 # ============================================================================ #
 # ========================== Training ML Model =============================== #
 
 # ========================== Multinomial NB ================================== #
 
-#alpha = 0.01
-#model = naive_bayes.MultinomialNB(alpha=alpha)
+alpha = 0.1
+model = naive_bayes.MultinomialNB(alpha=alpha)
 
 # ========================== Neural Networks ================================== #
 
-# model = neural_network.MLPClassifier(
-#     hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha
-# )
+#model = neural_network.MLPClassifier(
+ #    hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha)
 
 # ========================== Decision Tree ==================================== #
 
@@ -101,16 +113,16 @@ full_features = pd.read_pickle("C:/Users/doxak/PycharmProjects/features.pkl")
 # ============================================================================ #
 # =================== Support Vector Machines (SVM)=========================== #
 
-max_depth = 8
-model = svm.SVC(C=0.1, kernel='poly', degree=2,  gamma=0.2)
+#max_depth = 8
+#model = svm.SVC(C=0.1, kernel='poly', degree=2,  gamma=0.2)
 
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #
 
 # ========================== Cross Validation ================================ #
 
-results = utilities.crossValidation(full_features, y, model)
-print(results)
+results, score = utilities.crossValidation(full_features, y, model)
+print(results, score)
 
 
 # ============================================================================ #
