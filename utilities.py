@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
@@ -8,17 +7,6 @@ from sklearn import metrics, model_selection
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-
-def getData(fileName):
-    """
-    A function to load the dataset from an excel file
-    """
-    curr_dir = os.getcwd()
-    data = pd.read_excel(curr_dir + fileName)
-    X = data.iloc[:, :2]
-    y = data.iloc[:, -1]
-    return X, y
 
 
 def getVectors(X, vectorizer):

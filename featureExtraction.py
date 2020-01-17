@@ -2,6 +2,7 @@ import re
 import spacy as sp
 import pandas as pd
 
+import conf
 
 nlp = sp.load("el_core_news_sm")
 
@@ -205,7 +206,7 @@ def psycholiguistic(df):
     4. Returns the dataframe
     """
     # Read AFFIN dictionary
-    affin = pd.read_excel("C:/Users/doxak/PycharmProjects/start/AFFIN_new.xlsx")
+    affin = pd.read_excel(conf.CURR_DIR + "AFFIN.xlsx")
 
     # Convert articles to lowercase because AFFIN is in lowercase
     df['Title_lower'] = df['Title'].str.lower()

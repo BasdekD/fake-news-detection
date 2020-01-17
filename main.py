@@ -1,6 +1,8 @@
 import utilities
 import featureExtraction
-import preprocessing
+import text_preprocessing
+import file_handling
+import conf
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import naive_bayes, model_selection, neural_network, metrics, tree, svm
 import numpy as np
@@ -8,8 +10,6 @@ from sklearn.feature_selection import chi2, SelectKBest
 from sklearn import preprocessing
 from time import perf_counter
 import pandas as pd
-
-t1_start = perf_counter()
 
 '''
 Project: Fake-news Detection
@@ -25,63 +25,66 @@ Phase 7: Extract new features, repeat from phase 4
 # ============================================================================ #
 # ========================== Loading Dataset ================================= #
 
-X, y = utilities.getData('\\resources\\Fake News Dataset.xlsx')
-'''
+X, y = file_handling.getData()
 
 # ============================================================================ #
 # ========================== Feature Extraction ============================== #
+if not conf.FEATURES_FILE.exists():
+    t1_start = perf_counter()
 
-entities = ['GPE','LOC','ORG','PERSON','PRODUCT']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
-NER_feature = featureExtraction.getNERFeature(X, entities)
+    entities = ['GPE']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
+    NER_feature = featureExtraction.getNERFeature(X, entities)
 
-pos_tags = ['ADJ','ADP','ADV','NOUN','PROPN','VERB']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
-POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
+    pos_tags = ['PROPN', 'ADP']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
+    POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
 
-punctuation_features = featureExtraction.getPunctuationFeatures(X)
+    punctuation_features = featureExtraction.getPunctuationFeatures(X)
 
-affin_features = featureExtraction.psycholiguistic(X)
+    affin_features = featureExtraction.psycholiguistic(X)
 
 # ============================================================================ #
 # ========================== Data Preprocessing ============================== #
 
-# Lemmatizing data
-lemmatized_text = preprocessing.getLemmatizedText(X)
+    # Lemmatizing data
+    lemmatized_text = text_preprocessing.getLemmatizedText(X)
 
-# To lowercase
-lowercase_text = preprocessing.lowercase(lemmatized_text)
+    # To lowercase
+    lowercase_text = text_preprocessing.lowercase(lemmatized_text)
 
-# Removing punctuation
-punctuation_removed_text = preprocessing.removePunctuation(lowercase_text)
+    # Removing punctuation
+    punctuation_removed_text = text_preprocessing.removePunctuation(lowercase_text)
 
-# Removing stopwords
-stopword_removed_text = preprocessing.removeStopwords(punctuation_removed_text)
+    # Removing stopwords
+    stopword_removed_text = text_preprocessing.removeStopwords(punctuation_removed_text)
 
-# Deleting unnecessary columns. Keeping only the preprocessed data
-list_columns = ["Title_stop", "Body_stop"]
-X = stopword_removed_text[list_columns]
-X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
+    # Deleting unnecessary columns. Keeping only the preprocessed data
+    list_columns = ["Title_stop", "Body_stop"]
+    X = stopword_removed_text[list_columns]
+    X = X.rename(columns={"Title_stop": "Title_Parsed", "Body_stop": "Body_Parsed"})
 
 
 # ============================================================================ #
 # ========================== TF-IDF Extraction =============================== #
 
-# Initializing vectorizer
-vectorizer = TfidfVectorizer(strip_accents='unicode', max_df=0.8, ngram_range=(1, 4))
+    # Initializing vectorizer
+    vectorizer = TfidfVectorizer(strip_accents='unicode', max_df=0.8, ngram_range=(1, 4))
 
-# Get TF-IDF of title and body and merge them
-vectors = utilities.getVectors(X, vectorizer)
+    # Get TF-IDF of title and body and merge them
+    vectors = utilities.getVectors(X, vectorizer)
 
 # ============================================================================ #
 # ========================== Collecting Features ============================= #
 
-#punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
-full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature, affin_features), axis=1)
+    # punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
+    full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature, affin_features), axis=1)
 
-# Converting features to a dataframe for easier processing during oversampling
-full_features = pd.DataFrame(data=full_features)
-full_features.to_pickle("C:/Users/doxak/PycharmProjects/features.pkl")
-'''
-full_features = pd.read_pickle("C:/Users/doxak/PycharmProjects/features.pkl")
+    # Converting features to a dataframe for easier processing during oversampling
+    full_features = pd.DataFrame(data=full_features)
+    full_features.to_pickle(conf.FEATURES_FILE)
+
+elif conf.FEATURES_FILE.exists():
+    t1_start = perf_counter()
+    full_features = pd.read_pickle(conf.FEATURES_FILE)
 
 # ============================================================================ #
 # ========================== Feature Selection =============================== #
@@ -102,34 +105,34 @@ model = naive_bayes.MultinomialNB(alpha=alpha)
 
 # ========================== Neural Networks ================================== #
 
-#model = neural_network.MLPClassifier(
- #    hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha)
+# model = neural_network.MLPClassifier(
+# hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha)
 
 # ========================== Decision Tree ==================================== #
 
-#max_depth = 8
-#model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
+# max_depth = 8
+# model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
 
 # ============================================================================ #
 # =================== Support Vector Machines (SVM)=========================== #
 
-#max_depth = 8
-#model = svm.SVC(C=0.1, kernel='poly', degree=2,  gamma=0.2)
+# max_depth = 8
+# model = svm.SVC(C=0.1, kernel='poly', degree=2,  gamma=0.2)
 
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #
 
 # ========================== Cross Validation ================================ #
 
-results, score = utilities.crossValidation(full_features, y, model)
-print(results, score)
+results = utilities.crossValidation(full_features, y, model)
+print(results)
 
 
 # ============================================================================ #
 # ========================== Results Visualization =========================== #
 
 # Print Metrics
-#utilities.printMetrics(accuracy, recall, precision, f1)
+# utilities.printMetrics(accuracy, recall, precision, f1)
 
 # Plot confusion matrix
 # confusion_matrix = metrics.confusion_matrix(y_test, y_predicted)
