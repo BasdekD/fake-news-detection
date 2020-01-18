@@ -32,15 +32,15 @@ X, y = file_handling.getData()
 if not conf.FEATURES_FILE.exists():
     t1_start = perf_counter()
 
-    entities = ['GPE']        # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
+    entities = ['GPE']       # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
     NER_feature = featureExtraction.getNERFeature(X, entities)
 
-    pos_tags = ['PROPN', 'ADP']          # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
+    pos_tags = ['ADP', 'PROPN']   # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
     POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
 
     punctuation_features = featureExtraction.getPunctuationFeatures(X)
 
-    affin_features = featureExtraction.psycholiguistic(X)
+    # affin_features = featureExtraction.psycholiguistic(X)
 
 # ============================================================================ #
 # ========================== Data Preprocessing ============================== #
@@ -76,7 +76,7 @@ if not conf.FEATURES_FILE.exists():
 # ========================== Collecting Features ============================= #
 
     # punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
-    full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature, affin_features), axis=1)
+    full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature), axis=1)
 
     # Converting features to a dataframe for easier processing during oversampling
     full_features = pd.DataFrame(data=full_features)
@@ -86,22 +86,24 @@ elif conf.FEATURES_FILE.exists():
     t1_start = perf_counter()
     full_features = pd.read_pickle(conf.FEATURES_FILE)
 
+
 # ============================================================================ #
 # ========================== Feature Selection =============================== #
 
-print(full_features.shape)
-minMaxScaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
-full_features = minMaxScaler.fit_transform(full_features)
-selected_features = SelectKBest(chi2, k=6000).fit_transform(full_features, y)
-print(selected_features.shape)
+# minMaxScaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+# full_features = minMaxScaler.fit_transform(full_features)
+# full_features = pd.DataFrame(data=full_features)
+# selected_features = SelectKBest(chi2, k=50000).fit_transform(full_features, y)
 
 # ============================================================================ #
 # ========================== Training ML Model =============================== #
 
 # ========================== Multinomial NB ================================== #
 
-alpha = 0.1
-model = naive_bayes.MultinomialNB(alpha=alpha)
+params = {
+    'multinomialnb__alpha': [0.05, 0.1, 0.15, 0.2]
+}
+model = naive_bayes.MultinomialNB()
 
 # ========================== Neural Networks ================================== #
 
@@ -124,12 +126,19 @@ model = naive_bayes.MultinomialNB(alpha=alpha)
 
 # ========================== Cross Validation ================================ #
 
-results = utilities.crossValidation(full_features, y, model)
-print(results)
+train_set_result, best_parameters, best_f1, results_on_test_set = utilities.crossValidation(
+    full_features, y, model, params)
 
 
 # ============================================================================ #
 # ========================== Results Visualization =========================== #
+
+with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    print("The metrics of each split are:\n{}".format(train_set_result))
+print("The results on a test set unknown to the model: {}".format(results_on_test_set))
+print("Best f-score achieved: {}".format(best_f1))
+print("Parameter set with the best performance: {}".format(best_parameters))
+
 
 # Print Metrics
 # utilities.printMetrics(accuracy, recall, precision, f1)

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
 from sklearn.utils import resample
 from sklearn import metrics, model_selection
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
@@ -100,16 +101,62 @@ def plotHeatmap(confusion_matrix, accuracy, recall, precision, f1):
     return fig
 
 
-def crossValidation(X, y, model):
+def crossValidation(X, y, model, params):
     """
         A function that uses cross validation with data oversampling in each split.
     """
+    # We first split the data in order to have a test with data never seen by our model
+    x_train, x_test, y_train, y_test = model_selection.train_test_split(
+        X, y,
+        test_size=0.25,
+        random_state=42,
+        stratify=y)
+
+    # Pipeline to apply oversampling in each split of the cross validation
     imbalance_pipeline = make_pipeline(SMOTE(random_state=42), model)
+
     cv = model_selection.StratifiedKFold(n_splits=10)
+
+    # We want a multi-metric evaluation so we specify the metrics to be used
     scoring = ['accuracy', 'recall_macro', 'precision_macro', 'f1_macro']
-    score = model_selection.cross_validate(imbalance_pipeline, X=X, y=y, cv=cv, scoring=scoring)
-    results = {'avg_acurracy': score['test_accuracy'].mean(),
-               'avg_recall_macro': score['test_recall_macro'].mean(),
-               'avg_precision_macro': score['test_precision_macro'].mean(),
-               'avg_f1_macro': score['test_f1_macro'].mean()}
-    return results
+
+    # With GridSearchCV we try each combination of parameters given in each split of the cross validation in order to
+    # get the best model. By specifying refit=f1_macro we define that the best model is to be chosen based on f-score
+    evaluator = GridSearchCV(
+        imbalance_pipeline,
+        param_grid=params,
+        cv=cv,
+        scoring=scoring,
+        refit="f1_macro",
+        return_train_score=False)
+    evaluator.fit(x_train, y_train)
+
+    # cv_results_ is a dict with performance scores for each parameter combination in each split
+    train_set_result_dict = evaluator.cv_results_
+
+    # We convert the cv_results_ dict to dataframe for better visual representation
+    train_set_result_df = pd.DataFrame.from_dict(train_set_result_dict, orient='columns')
+
+    # Returns the best combination of parameters based on f-score as specified in refit parameter
+    best_parameters = evaluator.best_params_
+
+    # The value of the best f-score
+    best_f1 = evaluator.best_score_
+
+    # We make a prediction on a totally new test set to measure the performance of our model for completely new data
+    y_test_predict = evaluator.predict(x_test)
+    accuracy_test_set = accuracy_score(y_test, y_test_predict)
+    f1_test_set = f1_score(y_test, y_test_predict, average='macro')
+    recall_test_set = recall_score(y_test, y_test_predict, average='macro')
+    precision_test_set = precision_score(y_test, y_test_predict, average='macro')
+    results_on_test_set = {
+        'f1': f1_test_set,
+        'recall': recall_test_set,
+        'precision': precision_test_set
+    }
+
+    # Results visualization as confusion matrix
+    confusion_matrix = metrics.confusion_matrix(y_test, y_test_predict)
+    plotHeatmap(confusion_matrix, accuracy_test_set, recall_test_set, precision_test_set, f1_test_set).show()
+
+    return train_set_result_df, best_parameters, best_f1, results_on_test_set
