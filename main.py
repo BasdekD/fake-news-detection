@@ -1,5 +1,5 @@
 import utilities
-import featureExtraction
+import feature_extraction
 import text_preprocessing
 import file_handling
 import conf
@@ -14,33 +14,42 @@ import pandas as pd
 '''
 Project: Fake-news Detection
 Phase 1: Loading Dataset
-Phase 2: Feature Extraction (Lemmatization, punctuation removal, stopword removal)
-Phase 3: Data Prep
-Phase 4: Make the 2 Vector (TF-IDF title & TF-IDF body) algorithm's input features
-Phase 5: Use a classification algorithm
+Phase 2: Feature Extraction 
+Phase 3: Data Preprocessing (Lemmatization, punctuation removal, stopword removal)
+Phase 4: Representation of textual content as vectors (TF-IDF title & TF-IDF body)
+Phase 5: Machine Learning Models
 Phase 6: Evaluate performance
-Phase 7: Extract new features, repeat from phase 4
+Phase 7: Results visualization
 '''
 
 # ============================================================================ #
 # ========================== Loading Dataset ================================= #
 
+# X = data, y = data labels
 X, y = file_handling.getData()
 
 # ============================================================================ #
 # ========================== Feature Extraction ============================== #
+
+# If the pickle file with the features exists, the preprocessing and feature extraction phases are skipped for better
+# performance. Else, at the end of these phases the FEATURES_FILE is created for further utilization
+
 if not conf.FEATURES_FILE.exists():
     t1_start = perf_counter()
 
+    # NER feature extraction
     entities = ['GPE']       # All Entities: 'GPE', 'LOC', 'ORG', 'PERSON', 'PRODUCT'
-    NER_feature = featureExtraction.getNERFeature(X, entities)
+    NER_feature = feature_extraction.getNERFeature(X, entities)
 
+    # POS feature extraction
     pos_tags = ['ADP', 'PROPN']   # All POS tags: 'ADJ', 'ADP', 'ADV', 'NOUN', 'PROPN', 'VERB'
-    POS_feature = featureExtraction.getPOSFeature(X, pos_tags)
+    POS_feature = feature_extraction.getPOSFeature(X, pos_tags)
 
-    punctuation_features = featureExtraction.getPunctuationFeatures(X)
+    # Punctuation feature extraction
+    punctuation_features = feature_extraction.getPunctuationFeatures(X)
 
-    # affin_features = featureExtraction.psycholiguistic(X)
+    # Psycholinguistic feature extraction (Negative impact on final results, uncomment to use)
+    # affin_features = feature_extraction.psycholinguistic(X)
 
 # ============================================================================ #
 # ========================== Data Preprocessing ============================== #
@@ -48,7 +57,7 @@ if not conf.FEATURES_FILE.exists():
     # Lemmatizing data
     lemmatized_text = text_preprocessing.getLemmatizedText(X)
 
-    # To lowercase
+    # Converting to lowercase
     lowercase_text = text_preprocessing.lowercase(lemmatized_text)
 
     # Removing punctuation
@@ -82,13 +91,16 @@ if not conf.FEATURES_FILE.exists():
     full_features = pd.DataFrame(data=full_features)
     full_features.to_pickle(conf.FEATURES_FILE)
 
+# Writing final form of features to a file for better performance
 elif conf.FEATURES_FILE.exists():
     t1_start = perf_counter()
     full_features = pd.read_pickle(conf.FEATURES_FILE)
 
 
 # ============================================================================ #
-# ========================== Feature Selection =============================== #
+# ========================== Feature Optimization ============================ #
+
+# Negative impact on final results, uncomment to use
 
 # minMaxScaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
 # full_features = minMaxScaler.fit_transform(full_features)
@@ -157,21 +169,6 @@ with pd.option_context('display.max_rows', None, 'display.max_columns', None):
 print("The results on a test set unknown to the model: {}".format(results_on_test_set))
 print("Best f-score achieved: {}".format(best_f1))
 print("Parameter set with the best performance: {}".format(best_parameters))
-
-
-# Print Metrics
-# utilities.printMetrics(accuracy, recall, precision, f1)
-
-# Plot confusion matrix
-# confusion_matrix = metrics.confusion_matrix(y_test, y_predicted)
-# utilities.plotHeatmap(confusion_matrix, accuracy, recall, precision, f1).show()
-
-
-# TODO:  What other features could we use?
-# Number of Entities mentioned?
-# Numbers of each POS appearances?
-# Average sentence length?
-# Average word length?
 
 # Calculate execution time
 t1_stop = perf_counter()

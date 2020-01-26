@@ -195,7 +195,8 @@ def getPOSFeature(df, pos_tags):
     df = pd.concat(dataframes, axis=1)
     return df
 
-def psycholiguistic(df):
+
+def psycholinguistic(df):
     """
     A function that:
     1. Counts the score from the title and the body based on AFFIN, a psycholinguistic dictionary that was translates
