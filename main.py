@@ -4,7 +4,7 @@ import text_preprocessing
 import file_handling
 import conf
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn import naive_bayes, model_selection, neural_network, metrics, tree, svm
+from sklearn import naive_bayes, model_selection, neural_network, metrics, tree, svm, ensemble
 import numpy as np
 from sklearn.feature_selection import chi2, SelectKBest
 from sklearn import preprocessing
@@ -75,7 +75,7 @@ if not conf.FEATURES_FILE.exists():
 # ============================================================================ #
 # ========================== Collecting Features ============================= #
 
-    # punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title'])
+    punctuation_features = punctuation_features.as_matrix(columns=['exclamation_title', 'ellipsis_title'])
     full_features = np.concatenate((vectors, NER_feature, punctuation_features, POS_feature), axis=1)
 
     # Converting features to a dataframe for easier processing during oversampling
@@ -101,19 +101,38 @@ elif conf.FEATURES_FILE.exists():
 # ========================== Multinomial NB ================================== #
 
 params = {
-    'multinomialnb__alpha': [0.05, 0.1, 0.15, 0.2]
+    'multinomialnb__alpha': [0.15]
 }
 model = naive_bayes.MultinomialNB()
 
 # ========================== Neural Networks ================================== #
 
-# model = neural_network.MLPClassifier(
-# hidden_layer_sizes=20, activation='relu', solver='adam', tol=0.0001, max_iter=100, alpha=alpha)
+# params = {
+#     'mlpclassifier__hidden_layer_sizes': [(50, 50, 50)],
+#     'mlpclassifier__activation': ['relu'],
+#     'mlpclassifier__solver': ['lbfgs'],
+#     'mlpclassifier__alpha': [0.0001],
+#     'mlpclassifier__max_iter': [300],
+#     'mlpclassifier__random_state': [42],
+#     'mlpclassifier__tol': [0.0001]
+#
+# }
+# model = neural_network.MLPClassifier()
 
 # ========================== Decision Tree ==================================== #
 
 # max_depth = 8
 # model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
+
+# ========================== Random Forest ==================================== #
+
+# params = {
+#     "randomforestclassifier__criterion": ["entropy"],
+#     "randomforestclassifier__n_estimators": [5],
+#     "randomforestclassifier__max_depth": [3],
+#     "randomforestclassifier__max_features": [None]
+# }
+# model = ensemble.RandomForestClassifier()
 
 # ============================================================================ #
 # =================== Support Vector Machines (SVM)=========================== #
