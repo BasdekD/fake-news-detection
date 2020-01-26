@@ -5,7 +5,7 @@ from imblearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.utils import resample
 from sklearn import metrics, model_selection
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 

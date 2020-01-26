@@ -4,9 +4,8 @@ import text_preprocessing
 import file_handling
 import conf
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn import naive_bayes, model_selection, neural_network, metrics, tree, svm, ensemble
+from sklearn import naive_bayes, model_selection, neural_network, tree, svm, ensemble
 import numpy as np
-from sklearn.feature_selection import chi2, SelectKBest
 from sklearn import preprocessing
 from time import perf_counter
 import pandas as pd
@@ -133,8 +132,12 @@ model = naive_bayes.MultinomialNB()
 
 # ========================== Decision Tree ==================================== #
 
-# max_depth = 8
-# model = tree.DecisionTreeClassifier(criterion='entropy', max_depth=max_depth)
+# params = {
+#     'decisiontreeclassifier__max_depth': [1],
+#     'decisiontreeclassifier__criterion': ['gini']
+#
+# }
+# model = tree.DecisionTreeClassifier()
 
 # ========================== Random Forest ==================================== #
 
@@ -146,11 +149,21 @@ model = naive_bayes.MultinomialNB()
 # }
 # model = ensemble.RandomForestClassifier()
 
-# ============================================================================ #
 # =================== Support Vector Machines (SVM)=========================== #
 
-# max_depth = 8
-# model = svm.SVC(C=0.1, kernel='poly', degree=2,  gamma=0.2)
+# minMaxScaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+# full_features = minMaxScaler.fit_transform(full_features)
+# params = {
+#     'svc__kernel': ['sigmoid'],
+#     'svc__C': [0.1],
+#     'svc__gamma': [0.5]
+# }
+# model = svm.SVC()
+
+# ========================== Gradient Boosting ================================== #
+
+# params = {}
+# model = ensemble.GradientBoostingClassifier()
 
 # ============================================================================ #
 # ========================== Model Evaluation ================================ #
