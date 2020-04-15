@@ -19,12 +19,7 @@ def getPunctuationFeatures(df):
     """
 
     # Collect the number of words
-    words_title = []
-    words_body = []
-    for i in range(0, len(df)):
-        words_title.append(len(re.findall(r'\S+', df['Title'][i])))
-        words_body.append(len(re.findall(r'\S+', df['Body'][i])))
-
+    words_title, words_body = countWords(df)
     # Collect the number uppercase words bigger or equal to 5 letters
     uppercase_title = []
     uppercase_body = []
@@ -35,7 +30,7 @@ def getPunctuationFeatures(df):
         uppercase_body.append(len(result2) / words_body[i])
 
     # Collect the number of Ellispis(Αποσιωπητικά)
-    ellipsis_title =[]
+    ellipsis_title = []
     ellipsis_body = []
     for i in range(0, len(df)):
         result1 = re.findall(r'…', df['Title'][i])
@@ -76,6 +71,19 @@ def getPunctuationFeatures(df):
     return dataframe
 
 
+def countWords(df):
+    """
+    A method to count the number of words in an article's title and body
+    """
+    # Collect the number of words
+    words_title = []
+    words_body = []
+    for i in range(0, len(df)):
+        words_title.append(len(re.findall(r'\S+', df['Title'][i])))
+        words_body.append(len(re.findall(r'\S+', df['Body'][i])))
+    return words_title, words_body
+
+
 def getNERFeature(df, entity_types):
     """
     A function that:
@@ -100,40 +108,41 @@ def getNERFeature(df, entity_types):
         for entity_type in entity_types:
             NER_title[entity_type] = 0
             NER_body[entity_type] = 0
-        entity_counter_title = 0
-        entity_counter_body = 0
 
         # Counting the entities in the title by their category
-        for ent in doc_title.ents:
-            entity_counter_title += 1
-            for key in NER_title.keys():
-                if ent.label_ == key:
-                    NER_title[key] += 1
-        for key in NER_title.keys():
-            if entity_counter_title == 0:
-                NER_title[key] = 0
-            else:
-                NER_title[key] /= entity_counter_title
-        NER_all_titles.append(list(NER_title.values()))
-
+        NER_all_titles = countEntities(entity_types, doc_title, NER_title)
         # Counting the entities in the body by their category
-        for ent in doc_body.ents:
-            entity_counter_body += 1
-            for key in NER_body.keys():
-                if ent.label_ == key:
-                    NER_body[key] += 1
-        for key in NER_body.keys():
-            if entity_counter_body == 0:
-                NER_body[key] = 0
-            else:
-                NER_body[key] /= entity_counter_body
-        NER_all_bodies.append(list(NER_body.values()))
+        NER_all_bodies = countEntities(entity_types, doc_body, NER_body)
 
     NER_all_titles = pd.DataFrame(NER_all_titles)
     NER_all_bodies = pd.DataFrame(NER_all_bodies)
     dataframes = [NER_all_titles, NER_all_bodies]
     df = pd.concat(dataframes, axis=1)
     return df
+
+
+def countEntities(entity_types, doc_part, NER_part):
+    """
+    A method to be called by the "getNERFeature" method in order to count the entity percentage in the article part
+    (title or body) given
+    """
+    NER_all = []
+    for entity_type in entity_types:
+        NER_part[entity_type] = 0
+    entity_counter = 0
+
+    for ent in doc_part.ents:
+        entity_counter += 1
+        for key in NER_part.keys():
+            if ent.label_ == key:
+                NER_part[key] += 1
+    for key in NER_part.keys():
+        if entity_counter == 0:
+            NER_part[key] = 0
+        else:
+            NER_part[key] /= entity_counter
+    NER_all.append(list(NER_part.values()))
+    return NER_all
 
 
 def getPOSFeature(df, pos_tags):
@@ -160,40 +169,39 @@ def getPOSFeature(df, pos_tags):
         for tag in pos_tags:
             POS_title[tag] = 0
             POS_body[tag] = 0
-        token_counter_title = 0
-        token_counter_body = 0
 
         # Counting the POS in the title by their category
-        for token in doc_title:
-            token_counter_title += 1
-            for key in POS_title.keys():
-                if token.pos_ == key:
-                    POS_title[key] += 1
-        for key in POS_title.keys():
-            if token_counter_title == 0:
-                POS_title[key] = 0
-            else:
-                POS_title[key] /= token_counter_title
-        POS_all_titles.append(list(POS_title.values()))
-
+        POS_all_titles = getPOScount(doc_title, POS_title)
         # Counting the POS in the body by their category
-        for token in doc_body:
-            token_counter_body += 1
-            for key in POS_body.keys():
-                if token.pos_ == key:
-                    POS_body[key] += 1
-        for key in POS_body.keys():
-            if token_counter_body == 0:
-                POS_body[key] = 0
-            else:
-                POS_body[key] /= token_counter_body
-        POS_all_bodies.append(list(POS_body.values()))
+        POS_all_bodies = getPOScount(doc_body, POS_body)
 
     POS_all_titles = pd.DataFrame(POS_all_titles)
     POS_all_bodies = pd.DataFrame(POS_all_bodies)
     dataframes = [POS_all_titles, POS_all_bodies]
     df = pd.concat(dataframes, axis=1)
     return df
+
+
+def getPOScount(doc_part, POS_part):
+    """
+    A method to be called by the "getPOSFeature" method in order to count the POS tags percentage in the article part
+    (title or body) given
+    """
+    POS_all = []
+    token_counter = 0
+
+    for token in doc_part:
+        token_counter += 1
+        for key in POS_part.keys():
+            if token.pos_ == key:
+                POS_part[key] += 1
+    for key in POS_part.keys():
+        if token_counter == 0:
+            POS_part[key] = 0
+        else:
+            POS_part[key] /= token_counter
+    POS_all.append(list(POS_part.values()))
+    return POS_all
 
 
 def psycholinguistic(df):
@@ -214,11 +222,7 @@ def psycholinguistic(df):
     df['Body_lower'] = df['Body'].str.lower()
 
     # Count the number of words in title and body
-    number_of_words_title = []
-    number_of_words_body = []
-    for i in range(0, len(df)):
-        number_of_words_title.append(len(re.findall(r'\S+', df['Title'][i])))
-        number_of_words_body.append(len(re.findall(r'\S+', df['Body'][i])))
+    number_of_words_title, number_of_words_body = countWords(df)
 
     # Measure the score for each article
     title = []
@@ -227,8 +231,10 @@ def psycholinguistic(df):
         sum_title = 0
         sum_body = 0
         for y in range(0, len(affin)):
-            sum_title += len(re.findall('\\b' + re.escape(affin['word'][y]) + '\\b', df['Title_lower'][i])) * affin['score'][y]
-            sum_body += len(re.findall('\\b' + re.escape(affin['word'][y]) + '\\b', df['Body_lower'][i])) * affin['score'][y]
+            sum_title += \
+                len(re.findall('\\b' + re.escape(affin['word'][y]) + '\\b', df['Title_lower'][i])) * affin['score'][y]
+            sum_body += \
+                len(re.findall('\\b' + re.escape(affin['word'][y]) + '\\b', df['Body_lower'][i])) * affin['score'][y]
         title.append(sum_title/number_of_words_title[i])
         body.append(sum_body/number_of_words_body[i])
 

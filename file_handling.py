@@ -10,5 +10,3 @@ def getData():
     X = data.iloc[:, :2]
     y = data.iloc[:, -1]
     return X, y
-
-

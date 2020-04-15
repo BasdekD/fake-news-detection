@@ -15,6 +15,7 @@ def getVectors(X, vectorizer):
     A function that takes a dataframe as an input and transform article title and article body documents into vectors,
     concatenates the two columns into one and returns the results
     """
+
     vectorbody = vectorizer.fit_transform(X['Body_Parsed'])
     vector_body = vectorbody.toarray()
     vectortitle = vectorizer.fit_transform(X['Title_Parsed'])

@@ -35,9 +35,10 @@ def getLemmatizedText(df):
 
     return df
 
+
 def lowercase(dataframe):
     """
-       A function for removing punctuation
+       A function for to convert the text into lowercase
     """
     df = dataframe
     df['Title_lower'] = df['Title_lem'].str.lower()
@@ -50,8 +51,8 @@ def removePunctuation(dataframe):
        A function for removing punctuation
     """
     df = dataframe
-    df['Title_punct'] = df['Title_lower'].str.replace('[^\w\s]', '')
-    df['Body_punct'] = df['Body_lower'].str.replace('[^\w\s]', '')
+    df['Title_punct'] = df['Title_lower'].str.replace(r'[^\w\s]', '')
+    df['Body_punct'] = df['Body_lower'].str.replace(r'[^\w\s]', '')
     return df
 
 
@@ -66,9 +67,8 @@ def removeStopwords(lemmatized_text):
 
     for stop_word in stop_words:
         regex_stopword = r"\b" + stop_word + r"\b"
-        df['Title_stop'] = df['Title_stop'].str.\
+        df['Title_stop'] = df['Title_stop'].str. \
             replace(regex_stopword, '', case=False, regex=True)
-        df['Body_stop'] = df['Body_stop'].str.\
+        df['Body_stop'] = df['Body_stop'].str. \
             replace(regex_stopword, '', case=False, regex=True)
     return df
-

@@ -10,21 +10,21 @@ from sklearn import preprocessing
 from time import perf_counter
 import pandas as pd
 
-'''
-Project: Fake-news Detection
-Phase 1: Loading Dataset
-Phase 2: Feature Extraction 
+"""
+Project: Fake news detection in Greek, news-oriented articles
+Phase 1: Loading Dataset (already created)
+Phase 2: Feature Extraction (some features must be extracted before text preprocessing)
 Phase 3: Data Preprocessing (Lemmatization, punctuation removal, stopword removal)
 Phase 4: Representation of textual content as vectors (TF-IDF title & TF-IDF body)
-Phase 5: Machine Learning Models
+Phase 5: Machine Learning Models (several tested)
 Phase 6: Evaluate performance
 Phase 7: Results visualization
-'''
+"""
+
 
 # ============================================================================ #
 # ========================== Loading Dataset ================================= #
 
-# X = data, y = data labels
 X, y = file_handling.getData()
 
 # ============================================================================ #
@@ -32,7 +32,6 @@ X, y = file_handling.getData()
 
 # If the pickle file with the features exists, the preprocessing and feature extraction phases are skipped for better
 # performance. Else, at the end of these phases the FEATURES_FILE is created for further utilization
-
 if not conf.FEATURES_FILE.exists():
     t1_start = perf_counter()
 
@@ -74,7 +73,7 @@ if not conf.FEATURES_FILE.exists():
 # ============================================================================ #
 # ========================== TF-IDF Extraction =============================== #
 
-    # Initializing vectorizer
+    # Initializing vectorizer (we keep 1-4 order n-grams)
     vectorizer = TfidfVectorizer(strip_accents='unicode', max_df=0.8, ngram_range=(1, 4))
 
     # Get TF-IDF of title and body and merge them
@@ -90,11 +89,10 @@ if not conf.FEATURES_FILE.exists():
     full_features = pd.DataFrame(data=full_features)
     full_features.to_pickle(conf.FEATURES_FILE)
 
-# Writing final form of features to a file for better performance
+# Writing final form of features to a file for better performance (if the file doesn't exist already)
 elif conf.FEATURES_FILE.exists():
     t1_start = perf_counter()
     full_features = pd.read_pickle(conf.FEATURES_FILE)
-
 
 # ============================================================================ #
 # ========================== Feature Optimization ============================ #
@@ -108,6 +106,10 @@ elif conf.FEATURES_FILE.exists():
 
 # ============================================================================ #
 # ========================== Training ML Model =============================== #
+
+# We use Grid Search Cross Validation for the various models in order to find the
+# best values for the hyper-parameters. Any model can be used by uncommenting ir
+# and comment the currently active model.
 
 # ========================== Multinomial NB ================================== #
 
@@ -169,6 +171,9 @@ model = naive_bayes.MultinomialNB()
 # ========================== Model Evaluation ================================ #
 
 # ========================== Cross Validation ================================ #
+
+# The cross validation is customized in utilities.py in order to handle the
+# imbalance of the dataset.
 
 train_set_result, best_parameters, best_f1, results_on_test_set = utilities.crossValidation(
     full_features, y, model, params)
